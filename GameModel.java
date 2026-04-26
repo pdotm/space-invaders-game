@@ -257,4 +257,67 @@ public class GameModel {
     public int getAlienHeight() {
         return ALIEN_HEIGHT;
     }
+
+    public int getAlienRows() {
+        return ALIEN_ROWS;
+    }
+
+    public int getAlienCols() {
+        return ALIEN_COLS;
+    }
+
+    public int getPlayerY() {
+        return GAME_HEIGHT - PLAYER_HEIGHT;
+    }
+
+    public boolean isAlienAlive(int row, int col) {
+        return aliens[row][col].alive;
+    }
+
+    public int getAlienX(int row, int col) {
+        return aliens[row][col].x;
+    }
+
+    public int getAlienY(int row, int col) {
+        return aliens[row][col].y;
+    }
+
+    public boolean hasPlayerBullet() {
+        return playerBullet != null && playerBullet.active;
+    }
+
+    public int getPlayerBulletX() {
+        return playerBullet.x;
+    }
+
+    public int getPlayerBulletY() {
+        return playerBullet.y;
+    }
+
+    public int getAlienBulletCount() {
+        return alienBullets.size();
+    }
+
+    public int getAlienBulletX(int index) {
+        return alienBullets.get(index).x;
+    }
+
+    public int getAlienBulletY(int index) {
+        return alienBullets.get(index).y;
+    }
+
+    public boolean isGameOver() {
+        return lives <= 0 || areAllAliensDefeated();
+    }
+
+    private boolean areAllAliensDefeated() {
+        for (int row = 0; row < ALIEN_ROWS; row++) {
+            for (int col = 0; col < ALIEN_COLS; col++) {
+                if (aliens[row][col].alive) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }

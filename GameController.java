@@ -8,7 +8,7 @@ public class GameController {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             GameModel model = new GameModel();
-            GameView view = new GameView();
+            GameView view = new GameView(model);
 
             JFrame frame = new JFrame("Space Invaders");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
