@@ -92,7 +92,7 @@ public class GameModel {
     }
 
     public void firePlayerBullet() {
-        if (playerBullet == null) {
+        if (playerBullet == null || !playerBullet.active) {
             int bulletX = playerX + PLAYER_WIDTH / 2 - 2; // center the bullet
             int bulletY = GAME_HEIGHT - PLAYER_HEIGHT - 10;
             playerBullet = new Bullet(bulletX, bulletY, true);
