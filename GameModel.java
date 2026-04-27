@@ -144,6 +144,16 @@ public class GameModel {
             alienDirection *= -1;
         }
 
+        // If any alien has reached the bottom, remove it and subtract a life
+        for (int row = 0; row < ALIEN_ROWS; row++) {
+            for (int col = 0; col < ALIEN_COLS; col++) {
+                if (aliens[row][col].alive && aliens[row][col].y + ALIEN_HEIGHT >= GAME_HEIGHT) {
+                    aliens[row][col].alive = false;
+                    lives = Math.max(0, lives - 1);
+                }
+            }
+        }
+
         // Fire alien bullets at random intervals
         alienFireCounter++;
         if (alienFireCounter >= ALIEN_FIRE_INTERVAL) {
