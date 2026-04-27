@@ -1,6 +1,8 @@
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -14,18 +16,41 @@ public class GameController {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            GameModel model = new GameModel();
-            GameView view = new GameView(model);
+            // Mutable references so they can be captured by lambdas and refreshed on restart
+            GameModel[] modelRef  = { new GameModel() };
+            int[]       highScore = { 0 };
 
-            // Track which keys are currently held so movement is smooth across ticks
-            boolean[] leftHeld = {false};
-            boolean[] rightHeld = {false};
+            GameView view = new GameView(modelRef[0]);
 
-            // Game loop: update model each tick, repaint, stop when game over
+            // Track held movement keys
+            boolean[] leftHeld  = { false };
+            boolean[] rightHeld = { false };
+
+            // Timer is created now; startGame restarts it
+            Timer[] timerRef = { null };
             Timer timer = new Timer(TICK_MS, null);
+            timerRef[0] = timer;
+
+            // Start (or restart) a game: fresh model, reset held keys, show game, fire timer
+            Runnable startGame = () -> {
+                modelRef[0] = new GameModel();
+                view.setModel(modelRef[0]);
+                leftHeld[0]  = false;
+                rightHeld[0] = false;
+                view.showGame();
+                timerRef[0].restart();
+            };
+
+            // Game loop
             timer.addActionListener((ActionEvent e) -> {
+                GameModel model = modelRef[0];
+
                 if (model.isGameOver()) {
                     timer.stop();
+                    int  finalScore = model.getScore();
+                    boolean isNew   = finalScore > highScore[0];
+                    if (isNew) highScore[0] = finalScore;
+                    view.showMenu(highScore[0], isNew);
                     view.repaint();
                     return;
                 }
@@ -37,14 +62,21 @@ public class GameController {
                 view.repaint();
             });
 
-            // Keyboard input: track held movement keys, fire on press
+            // Keyboard: Enter or Space starts game from menu; arrows and space control during game
             view.addKeyListener(new KeyAdapter() {
                 @Override
                 public void keyPressed(KeyEvent e) {
+                    if (view.isMenuActive()) {
+                        if (e.getKeyCode() == KeyEvent.VK_ENTER ||
+                            e.getKeyCode() == KeyEvent.VK_SPACE) {
+                            startGame.run();
+                        }
+                        return;
+                    }
                     switch (e.getKeyCode()) {
                         case KeyEvent.VK_LEFT  -> leftHeld[0]  = true;
                         case KeyEvent.VK_RIGHT -> rightHeld[0] = true;
-                        case KeyEvent.VK_SPACE -> model.firePlayerBullet();
+                        case KeyEvent.VK_SPACE -> modelRef[0].firePlayerBullet();
                     }
                 }
 
@@ -53,6 +85,16 @@ public class GameController {
                     switch (e.getKeyCode()) {
                         case KeyEvent.VK_LEFT  -> leftHeld[0]  = false;
                         case KeyEvent.VK_RIGHT -> rightHeld[0] = false;
+                    }
+                }
+            });
+
+            // Mouse: clicking the START button starts the game
+            view.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (view.isMenuActive() && view.isStartButtonAt(e.getX(), e.getY())) {
+                        startGame.run();
                     }
                 }
             });
@@ -66,7 +108,7 @@ public class GameController {
             frame.setVisible(true);
 
             view.requestFocusInWindow();
-            timer.start();
+            view.showMenu(0, false);
         });
     }
 }

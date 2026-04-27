@@ -16,10 +16,18 @@ public class GameView extends JPanel {
     private static final int ALIEN_BULLET_HEIGHT = 10;
     private static final int STAR_COUNT = 120;
 
-    private final GameModel model;
+    private GameModel model;
     private final int[] starX;
     private final int[] starY;
     private final int[] starSize;
+
+    // Menu state
+    private boolean menuActive = true;
+    private int     menuHighScore = 0;
+    private boolean menuNewHighScore = false;
+
+    // Cached bounds of the START button, set during drawMenu and used for hit-testing
+    private int btnX, btnY, btnW, btnH;
 
     public GameView(GameModel model) {
         this.model = model;
@@ -39,6 +47,31 @@ public class GameView extends JPanel {
         }
     }
 
+    // --- Public API for controller ---
+
+    public void setModel(GameModel m) {
+        this.model = m;
+    }
+
+    public void showMenu(int highScore, boolean newHighScore) {
+        this.menuActive       = true;
+        this.menuHighScore    = highScore;
+        this.menuNewHighScore = newHighScore;
+    }
+
+    public void showGame() {
+        this.menuActive = false;
+    }
+
+    public boolean isMenuActive() {
+        return menuActive;
+    }
+
+    /** Returns true when (mx, my) falls inside the START button drawn in the last menu repaint. */
+    public boolean isStartButtonAt(int mx, int my) {
+        return mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH;
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -47,18 +80,75 @@ public class GameView extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         try {
             drawStars(g2);
-            drawPowerup(g2);
-            drawPlayer(g2);
-            drawAliens(g2);
-            drawBullets(g2);
-            drawHud(g2);
-
-            if (model.isGameOver()) {
-                drawGameOver(g2);
+            if (menuActive) {
+                drawMenu(g2);
+            } else {
+                drawPowerup(g2);
+                drawPlayer(g2);
+                drawAliens(g2);
+                drawBullets(g2);
+                drawHud(g2);
             }
         } finally {
             g2.dispose();
         }
+    }
+
+    // --- Menu screen ---
+
+    private void drawMenu(Graphics2D g2) {
+        int w = getWidth();
+        int h = getHeight();
+
+        // Title
+        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 48));
+        String title = "SPACE INVADERS";
+        FontMetrics tfm = g2.getFontMetrics();
+        int tx = (w - tfm.stringWidth(title)) / 2;
+        g2.setColor(new Color(0, 200, 255));
+        g2.drawString(title, tx, h / 2 - 110);
+
+        // New high score banner
+        if (menuNewHighScore) {
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+            String banner = "** NEW HIGH SCORE! **";
+            FontMetrics bfm = g2.getFontMetrics();
+            g2.setColor(new Color(255, 215, 0));
+            g2.drawString(banner, (w - bfm.stringWidth(banner)) / 2, h / 2 - 60);
+        }
+
+        // High score line
+        g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 20));
+        String hsLine = "High Score:  " + menuHighScore;
+        FontMetrics hfm = g2.getFontMetrics();
+        g2.setColor(Color.WHITE);
+        g2.drawString(hsLine, (w - hfm.stringWidth(hsLine)) / 2, h / 2 - 20);
+
+        // START button
+        btnW = 200;
+        btnH = 50;
+        btnX = (w - btnW) / 2;
+        btnY = h / 2 + 20;
+
+        g2.setColor(new Color(0, 160, 80));
+        g2.fillRoundRect(btnX, btnY, btnW, btnH, 12, 12);
+        g2.setColor(new Color(0, 220, 110));
+        g2.drawRoundRect(btnX, btnY, btnW, btnH, 12, 12);
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+        String btnLabel = "START GAME";
+        FontMetrics lfm = g2.getFontMetrics();
+        g2.setColor(Color.WHITE);
+        g2.drawString(btnLabel,
+            btnX + (btnW - lfm.stringWidth(btnLabel)) / 2,
+            btnY + (btnH + lfm.getAscent() - lfm.getDescent()) / 2);
+
+        // Keyboard hint
+        g2.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        String hint = "or press ENTER / SPACE";
+        FontMetrics efm = g2.getFontMetrics();
+        g2.setColor(new Color(160, 160, 160));
+        g2.drawString(hint, (w - efm.stringWidth(hint)) / 2, btnY + btnH + 30);
     }
 
     // --- Background ---
@@ -227,18 +317,4 @@ public class GameView extends JPanel {
         }
     }
 
-    // --- Game-over overlay ---
-
-    private void drawGameOver(Graphics2D g2) {
-        String message = model.getLives() <= 0 ? "GAME OVER" : "YOU WIN";
-        g2.setColor(new Color(0, 0, 0, 150));
-        g2.fillRect(0, 0, getWidth(), getHeight());
-
-        g2.setColor(Color.WHITE);
-        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 42));
-        FontMetrics metrics = g2.getFontMetrics();
-        int x = (getWidth() - metrics.stringWidth(message)) / 2;
-        int y = (getHeight() - metrics.getHeight()) / 2 + metrics.getAscent();
-        g2.drawString(message, x, y);
-    }
 }
