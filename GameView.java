@@ -47,6 +47,7 @@ public class GameView extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         try {
             drawStars(g2);
+            drawPowerup(g2);
             drawPlayer(g2);
             drawAliens(g2);
             drawBullets(g2);
@@ -166,15 +167,51 @@ public class GameView extends JPanel {
     // --- Bullets ---
 
     private void drawBullets(Graphics2D g2) {
+        g2.setColor(Color.YELLOW);
         if (model.hasPlayerBullet()) {
-            g2.setColor(Color.YELLOW);
             g2.fillRect(model.getPlayerBulletX(), model.getPlayerBulletY(), PLAYER_BULLET_WIDTH, PLAYER_BULLET_HEIGHT);
+        }
+        if (model.hasPlayerBulletLeft()) {
+            g2.fillRect(model.getPlayerBulletLeftX(), model.getPlayerBulletLeftY(), PLAYER_BULLET_WIDTH, PLAYER_BULLET_HEIGHT);
+        }
+        if (model.hasPlayerBulletRight()) {
+            g2.fillRect(model.getPlayerBulletRightX(), model.getPlayerBulletRightY(), PLAYER_BULLET_WIDTH, PLAYER_BULLET_HEIGHT);
         }
 
         g2.setColor(Color.RED);
         for (int i = 0; i < model.getAlienBulletCount(); i++) {
             g2.fillRect(model.getAlienBulletX(i), model.getAlienBulletY(i), ALIEN_BULLET_WIDTH, ALIEN_BULLET_HEIGHT);
         }
+    }
+
+    private void drawPowerup(Graphics2D g2) {
+        if (!model.hasPowerup()) return;
+        int x  = model.getPowerupX();
+        int y  = model.getPowerupY();
+        int s  = model.getPowerupSize();
+        int cx = x + s / 2;
+        int cy = y + s / 2;
+
+        // Soft outer glow
+        g2.setColor(new Color(255, 200, 0, 80));
+        g2.fillOval(cx - 14, cy - 14, 28, 28);
+
+        // Gold diamond body
+        int[] px = { cx,       cx + s/2, cx,       cx - s/2 };
+        int[] py = { cy - s/2, cy,       cy + s/2, cy       };
+        g2.setColor(new Color(255, 215, 0));
+        g2.fillPolygon(px, py, 4);
+
+        // Inner highlight diamond
+        int h = s / 4;
+        int[] hx = { cx,     cx + h, cx,     cx - h };
+        int[] hy = { cy - h, cy,     cy + h, cy     };
+        g2.setColor(new Color(255, 255, 180));
+        g2.fillPolygon(hx, hy, 4);
+
+        // Centre sparkle
+        g2.setColor(Color.WHITE);
+        g2.fillOval(cx - 2, cy - 2, 4, 4);
     }
 
     // --- HUD ---
@@ -184,6 +221,10 @@ public class GameView extends JPanel {
         g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 16));
         g2.drawString("Score: " + model.getScore(), 10, 24);
         g2.drawString("Lives: " + model.getLives(), getWidth() - 100, 24);
+        if (model.hasTripleShot()) {
+            g2.setColor(new Color(255, 215, 0));
+            g2.drawString("TRIPLE", getWidth() / 2 - 28, 24);
+        }
     }
 
     // --- Game-over overlay ---

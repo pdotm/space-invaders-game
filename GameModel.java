@@ -20,6 +20,8 @@ public class GameModel {
     private static final int BULLET_SPEED = 7;
     private static final int ALIEN_BULLET_SPEED = 4;
     private static final int ALIEN_FIRE_INTERVAL = 60; // frames
+    private static final int POWERUP_SPAWN_TICK = 500; 
+    private static final int POWERUP_SIZE = 20;
 
     // Game state
     private int playerX;
@@ -31,6 +33,11 @@ public class GameModel {
     private int alienDirection; // 1 for right, -1 for left
     private int alienFireCounter;
     private Random random;
+    private int tickCount;
+    private Powerup powerup;
+    private boolean tripleShot;
+    private Bullet playerBulletLeft;
+    private Bullet playerBulletRight;
 
     // Inner class for Alien
     private static class Alien {
@@ -41,6 +48,18 @@ public class GameModel {
             this.x = x;
             this.y = y;
             this.alive = true;
+        }
+    }
+
+    // Inner class for Powerup
+    private static class Powerup {
+        int x, y;
+        boolean active;
+
+        Powerup(int x, int y) {
+            this.x = x;
+            this.y = y;
+            this.active = true;
         }
     }
 
@@ -67,6 +86,11 @@ public class GameModel {
         this.alienDirection = 1;
         this.alienFireCounter = 0;
         this.random = new Random();
+        this.tickCount = 0;
+        this.powerup = null;
+        this.tripleShot = false;
+        this.playerBulletLeft = null;
+        this.playerBulletRight = null;
 
         // Initialize alien formation
         this.aliens = new Alien[ALIEN_ROWS][ALIEN_COLS];
@@ -96,16 +120,36 @@ public class GameModel {
             int bulletX = playerX + PLAYER_WIDTH / 2 - 2; // center the bullet
             int bulletY = GAME_HEIGHT - PLAYER_HEIGHT - 10;
             playerBullet = new Bullet(bulletX, bulletY, true);
+            if (tripleShot) {
+                playerBulletLeft  = new Bullet(bulletX - 12, bulletY, true);
+                playerBulletRight = new Bullet(bulletX + 12, bulletY, true);
+            }
         }
     }
 
     public void update() {
+        tickCount++;
+        // Spawn powerup after 10 seconds
+        if (tickCount == POWERUP_SPAWN_TICK) {
+            powerup = new Powerup(GAME_WIDTH / 2 - POWERUP_SIZE / 2, GAME_HEIGHT - PLAYER_HEIGHT - 80);
+        }
+
         // Advance player bullet
         if (playerBullet != null && playerBullet.active) {
             playerBullet.y -= BULLET_SPEED;
             if (playerBullet.y < 0) {
                 playerBullet.active = false;
             }
+        }
+
+        // Advance triple-shot side bullets
+        if (playerBulletLeft != null && playerBulletLeft.active) {
+            playerBulletLeft.y -= BULLET_SPEED;
+            if (playerBulletLeft.y < 0) playerBulletLeft.active = false;
+        }
+        if (playerBulletRight != null && playerBulletRight.active) {
+            playerBulletRight.y -= BULLET_SPEED;
+            if (playerBulletRight.y < 0) playerBulletRight.active = false;
         }
 
         // Advance alien bullets
@@ -182,25 +226,41 @@ public class GameModel {
     }
 
     private void detectCollisions() {
-        // Collision: player bullet hits alien
-        if (playerBullet != null && playerBullet.active) {
-            for (int row = 0; row < ALIEN_ROWS; row++) {
-                for (int col = 0; col < ALIEN_COLS; col++) {
-                    Alien alien = aliens[row][col];
-                    if (alien.alive && checkBulletAlienCollision(playerBullet, alien)) {
-                        alien.alive = false;
-                        playerBullet.active = false;
-                        score += 10;
-                    }
-                }
+        // Collision: any player bullet hits powerup
+        if (powerup != null && powerup.active) {
+            if ((playerBullet != null && playerBullet.active && checkBulletPowerupCollision(playerBullet)) ||
+                (playerBulletLeft != null && playerBulletLeft.active && checkBulletPowerupCollision(playerBulletLeft)) ||
+                (playerBulletRight != null && playerBulletRight.active && checkBulletPowerupCollision(playerBulletRight))) {
+                powerup.active = false;
+                tripleShot = true;
             }
         }
+
+        // Collision: player bullet(s) hit alien
+        checkPlayerBulletVsAliens(playerBullet);
+        checkPlayerBulletVsAliens(playerBulletLeft);
+        checkPlayerBulletVsAliens(playerBulletRight);
 
         // Collision: alien bullet hits player
         for (Bullet bullet : alienBullets) {
             if (bullet.active && checkBulletPlayerCollision(bullet)) {
                 bullet.active = false;
                 lives--;
+            }
+        }
+    }
+
+    private void checkPlayerBulletVsAliens(Bullet bullet) {
+        if (bullet == null || !bullet.active) return;
+        for (int row = 0; row < ALIEN_ROWS; row++) {
+            for (int col = 0; col < ALIEN_COLS; col++) {
+                Alien alien = aliens[row][col];
+                if (alien.alive && checkBulletAlienCollision(bullet, alien)) {
+                    alien.alive = false;
+                    bullet.active = false;
+                    score += 10;
+                    return;
+                }
             }
         }
     }
@@ -217,6 +277,13 @@ public class GameModel {
                bullet.x + 4 > playerX &&
                bullet.y < GAME_HEIGHT - PLAYER_HEIGHT &&
                bullet.y + 10 > GAME_HEIGHT - PLAYER_HEIGHT;
+    }
+
+    private boolean checkBulletPowerupCollision(Bullet bullet) {
+        return bullet.x < powerup.x + POWERUP_SIZE &&
+               bullet.x + 4 > powerup.x &&
+               bullet.y < powerup.y + POWERUP_SIZE &&
+               bullet.y + 10 > powerup.y;
     }
 
     // Getters
@@ -330,4 +397,32 @@ public class GameModel {
         }
         return true;
     }
+
+    public boolean hasPowerup() {
+        return powerup != null && powerup.active;
+    }
+
+    public int getPowerupX() { return powerup.x; }
+
+    public int getPowerupY() { return powerup.y; }
+
+    public int getPowerupSize() { return POWERUP_SIZE; }
+
+    public boolean hasTripleShot() { return tripleShot; }
+
+    public boolean hasPlayerBulletLeft() {
+        return playerBulletLeft != null && playerBulletLeft.active;
+    }
+
+    public int getPlayerBulletLeftX() { return playerBulletLeft.x; }
+
+    public int getPlayerBulletLeftY() { return playerBulletLeft.y; }
+
+    public boolean hasPlayerBulletRight() {
+        return playerBulletRight != null && playerBulletRight.active;
+    }
+
+    public int getPlayerBulletRightX() { return playerBulletRight.x; }
+
+    public int getPlayerBulletRightY() { return playerBulletRight.y; }
 }
